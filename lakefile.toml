@@ -1,0 +1,20 @@
+name = "TreeSearch"
+version = "0.1.0"
+defaultTargets = ["treesearch"]
+
+[[lean_lib]]
+name = "TreeSearch"
+
+[[require]]
+name = "batteries"
+scope = "leanprover-community"
+rev = "v4.26.0-rc2"
+
+[[require]]
+name = "reap"
+git = "https://github.com/frenzymath/reap.git"
+rev = "main"
+
+[[lean_exe]]
+name = "treesearch"
+root = "Main"
