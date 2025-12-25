@@ -1,12 +1,6 @@
 import Batteries
+import TreeSearch.Abstract.Basic
 open Batteries
-
-/- σ : type of data associated with each node
-   ε : type of data associated with each edge
--/
-structure Node (σ ε : Type) where
-  data : σ
-  children : Array ε := #[]
 
 section
 variable {m : Type → Type} [Monad m] {σ ε : Type}
@@ -17,7 +11,7 @@ def bestFirstSearch (priority : σ → m Float)
   let mut nodes := #[ { data := start } ]
   let mut heap := BinaryHeap.singleton (fun a b => a.fst < b.fst) (0.0, 0)
 
-  while heap.size < maxNodes do
+  while heap.size <= maxNodes do
     match heap.max with
     | none => return (none, nodes)
     | some (_, i) =>
