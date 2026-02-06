@@ -1,1 +1,2 @@
-import TreeSearch.Concrete.Basic
+module
+public meta import TreeSearch.Concrete.Basic
