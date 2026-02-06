@@ -1,7 +1,10 @@
-import Lean
-import TreeSearch.Abstract.BestFirst
-import TreeSearch.Abstract.MCTS
+module
+public meta import Lean
+public meta import TreeSearch.Abstract.BestFirst
+public meta import TreeSearch.Abstract.MCTS
 open Lean Meta Elab Tactic
+
+public meta section
 
 def evalTacticStr (str : String) : TacticM (Option Tactic.SavedState) := do
   let .ok stx := Parser.runParserCategory (← getEnv) `tactic str | return none
