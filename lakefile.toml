@@ -10,11 +10,6 @@ name = "batteries"
 scope = "leanprover-community"
 rev = "main"
 
-[[require]]
-name = "reap"
-git = "https://github.com/frenzymath/reap.git"
-rev = "main"
-
 [[lean_exe]]
 name = "treesearch"
 root = "Main"
