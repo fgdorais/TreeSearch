@@ -3,6 +3,8 @@ public meta import Batteries.Data.Array
 public meta import TreeSearch.Abstract.Basic
 public meta import Lean
 
+namespace Reap.TreeSearch
+
 public meta section
 /- Helper functions for working with an array of objects in StateT -/
 variable {σ : Type} {m : Type → Type} [Monad m]
@@ -80,3 +82,5 @@ partial def monteCarloTreeSearch
       step := step + 1
     return none
 end
+
+end Reap.TreeSearch

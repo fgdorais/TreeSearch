@@ -6,6 +6,8 @@ open Lean Meta Elab Tactic
 
 public meta section
 
+namespace Reap.TreeSearch
+
 def evalTacticStr (str : String) : TacticM (Option Tactic.SavedState) := do
   let .ok stx := Parser.runParserCategory (← getEnv) `tactic str | return none
   try
@@ -82,7 +84,12 @@ def ppSearchState (ss : SearchState) : TacticM PPSearchState := do
 end BFS
 
 open BFS in
-def proofSearchBFS (tg : TacGen) : TacticM Unit := do
+/--
+TODO: For now, `proofSearchBFS` is exposed to the root namespace
+so that we don't need to make any changes in the reap repository.
+In the future, we may want to move it to a more appropriate namespace.
+-/
+def _root_.proofSearchBFS (tg : TacGen) : TacticM Unit := do
   let (k, nodes) ← bestFirstSearch priority (fun x => isTerminal x.state) (expand tg) ⟨ ← Tactic.saveState, 0.0 ⟩
   let ppNodes ← nodes.mapM fun node => do
     let pp ← ppSearchState node.data
@@ -201,3 +208,5 @@ def reapMCTS (tg : TacGen) : TacticM Unit := do
   if let some k := k then
     let some node := nodes[k]? | unreachable!
     node.data.state.restore
+
+end Reap.TreeSearch
