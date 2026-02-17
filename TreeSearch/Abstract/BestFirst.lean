@@ -1,8 +1,11 @@
-import Batteries
-import TreeSearch.Abstract.Basic
+module
+public meta import Batteries
+public meta import TreeSearch.Abstract.Basic
 open Batteries
 
-section
+namespace Reap.TreeSearch
+
+public meta section
 variable {m : Type → Type} [Monad m] {σ ε : Type}
 
 def bestFirstSearch (priority : σ → m Float)
@@ -31,4 +34,7 @@ def bestFirstSearch (priority : σ → m Float)
 
       nodes := nodes.set! i { node with children := node.children ++ newChildren }
   return (none, nodes)
+
 end
+
+end Reap.TreeSearch

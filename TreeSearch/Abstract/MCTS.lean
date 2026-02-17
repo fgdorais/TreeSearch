@@ -1,8 +1,11 @@
-import Batteries.Data.Array
-import TreeSearch.Abstract.Basic
-import Lean
+module
+public meta import Batteries.Data.Array
+public meta import TreeSearch.Abstract.Basic
+public meta import Lean
 
-section
+namespace Reap.TreeSearch
+
+public meta section
 /- Helper functions for working with an array of objects in StateT -/
 variable {σ : Type} {m : Type → Type} [Monad m]
 
@@ -20,6 +23,7 @@ def setAtT (i : Nat) (x : σ) : StateT (Array σ) m Unit :=
   modify fun a => a.set! i x
 end
 
+public meta section
 abbrev SearchT σ ε m := StateT (Array (Node σ (ε × Nat))) m
 
 variable {σ ε : Type}
@@ -77,3 +81,6 @@ partial def monteCarloTreeSearch
         return result
       step := step + 1
     return none
+end
+
+end Reap.TreeSearch

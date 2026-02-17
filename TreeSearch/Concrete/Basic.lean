@@ -1,8 +1,12 @@
-import Lean
-import Reap
-import TreeSearch.Abstract.BestFirst
-import TreeSearch.Abstract.MCTS
+module
+public meta import Lean
+public meta import TreeSearch.Abstract.BestFirst
+public meta import TreeSearch.Abstract.MCTS
 open Lean Meta Elab Tactic
+
+public meta section
+
+namespace Reap.TreeSearch
 
 def evalTacticStr (str : String) : TacticM (Option Tactic.SavedState) := do
   let .ok stx := Parser.runParserCategory (← getEnv) `tactic str | return none
@@ -41,6 +45,7 @@ def isTerminal (ss : Tactic.SavedState) : TacticM Bool := do
   ss.restore
   return (← getUnsolvedGoals).isEmpty
 
+abbrev TacGen := MVarId → MetaM (Array (String × Float))
 
 namespace BFS
 
@@ -54,12 +59,12 @@ def priority (ss : SearchState) : TacticM Float := do
   else
     return ss.priority
 
-def expand (ss : SearchState) : TacticM (Array (String × SearchState)) := do
+def expand (tg : TacGen) (ss : SearchState) : TacticM (Array (String × SearchState)) := do
   let mut newStates := #[]
   let p := ss.priority
   ss.state.restore
   let g ← getMainGoal
-  let tactics ← TacticGenerator.generateTactics g
+  let tactics ← tg g
   for (t, Δp) in tactics do
     ss.state.restore
     if let some s' ← evalTacticStr t then
@@ -79,8 +84,13 @@ def ppSearchState (ss : SearchState) : TacticM PPSearchState := do
 end BFS
 
 open BFS in
-def reapBFS : TacticM Unit := do
-  let (k, nodes) ← bestFirstSearch priority (fun x => isTerminal x.state) expand ⟨ ← Tactic.saveState, 0.0 ⟩
+/--
+TODO: For now, `proofSearchBFS` is exposed to the root namespace
+so that we don't need to make any changes in the reap repository.
+In the future, we may want to move it to a more appropriate namespace.
+-/
+def _root_.proofSearchBFS (tg : TacGen) : TacticM Unit := do
+  let (k, nodes) ← bestFirstSearch priority (fun x => isTerminal x.state) (expand tg) ⟨ ← Tactic.saveState, 0.0 ⟩
   let ppNodes ← nodes.mapM fun node => do
     let pp ← ppSearchState node.data
     return json%{
@@ -99,8 +109,6 @@ def reapBFS : TacticM Unit := do
     let some node := nodes[k]? | unreachable!
     node.data.state.restore
 
-elab "reapBFS" : tactic => reapBFS
-
 
 namespace MCTS
 
@@ -116,12 +124,12 @@ deriving ToJson
 
 abbrev NodeType := Node NodeData (EdgeData × NodeData)
 
-def expand (node : NodeType) : TacticM (Array (EdgeData × NodeData)) := do
+def expand (tg : TacGen) (node : NodeType) : TacticM (Array (EdgeData × NodeData)) := do
   let s₀ := node.data.state
   let mut ret := #[]
   s₀.restore
   let g ← getMainGoal
-  let tactics ← TacticGenerator.generateTactics g
+  let tactics ← tg g
   for (t, p) in tactics do
     s₀.restore
     if let some s' ← evalTacticStr t then
@@ -174,10 +182,10 @@ def ppNodeData (node : NodeData) : TacticM PPNodeData := do
 end MCTS
 
 open MCTS in
-def reapMCTS : TacticM Unit := do
+def reapMCTS (tg : TacGen) : TacticM Unit := do
   let (k, nodes) ← monteCarloTreeSearch
     (fun x => isTerminal x.state)
-    expand
+    (expand tg)
     (fun x => return selectChild x)
     (fun _ e _ => return updateEdge e)
     (fun x => return x.data)
@@ -201,4 +209,4 @@ def reapMCTS : TacticM Unit := do
     let some node := nodes[k]? | unreachable!
     node.data.state.restore
 
-elab "reapMCTS" : tactic => reapMCTS
+end Reap.TreeSearch
