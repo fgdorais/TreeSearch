@@ -187,7 +187,9 @@ def ppNodeData (node : NodeData) : TacticM PPNodeData := do
 end MCTS
 
 open MCTS in
-def reapMCTS (tg : TacGen) (se : StateEval) : TacticM Unit := do
+def reapMCTS (tg : TacGen) (se : StateEval)
+    (maxNodes := MCTS.defaultMaxNodes)
+    (maxSteps := MCTS.defaultMaxSteps) : TacticM Unit := do
   let (k, nodes) ← monteCarloTreeSearch
     (fun x => isTerminal x.state)
     (expand tg se)
@@ -195,6 +197,7 @@ def reapMCTS (tg : TacGen) (se : StateEval) : TacticM Unit := do
     (fun _ e _ => return updateEdge e)
     (fun x => return updateNode x)
     ⟨ ← Tactic.saveState, 0.0 ⟩
+    maxNodes maxSteps
 
   let ppNodes ← nodes.mapM fun node => do
     let pp ← ppNodeData node.data

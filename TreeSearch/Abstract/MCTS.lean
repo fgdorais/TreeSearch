@@ -66,13 +66,19 @@ partial def mctsStep
       setAtT i x''
       return result
 
+def MCTS.defaultMaxNodes : Nat := 64
+def MCTS.defaultMaxSteps : Nat := 64
+
 partial def monteCarloTreeSearch
     (isTerminal : σ → m Bool)
     (expand : Node σ (ε × σ) → m (Array (ε × σ)))
     (selectChild : Node σ (ε × σ) → m (Option Nat))
     (updateEdge : σ → ε → σ → m ε)
     (updateNode : Node σ (ε × σ) → m σ)
-    (start : σ) (maxNodes : Nat := 64) (maxSteps : Nat := 64) : m (Option Nat × Array (Node σ (ε × Nat))) :=
+    (start : σ)
+    (maxNodes := MCTS.defaultMaxNodes)
+    (maxSteps := MCTS.defaultMaxSteps) :
+    m (Option Nat × Array (Node σ (ε × Nat))) :=
   StateT.run (s := #[ { data := start } ]) do
     let mut step := 0
     while (← get).size <= maxNodes && step < maxSteps do
