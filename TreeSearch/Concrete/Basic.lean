@@ -89,8 +89,10 @@ TODO: For now, `proofSearchBFS` is exposed to the root namespace
 so that we don't need to make any changes in the reap repository.
 In the future, we may want to move it to a more appropriate namespace.
 -/
-def _root_.proofSearchBFS (tg : TacGen) : TacticM Unit := do
-  let (k, nodes) ← bestFirstSearch priority (fun x => isTerminal x.state) (expand tg) ⟨ ← Tactic.saveState, 0.0 ⟩
+def _root_.proofSearchBFS (tg : TacGen)
+    (maxNodes := BestFirst.defaultMaxNodes) : TacticM Unit := do
+  let (k, nodes) ← bestFirstSearch priority (fun x => isTerminal x.state)
+    (expand tg) ⟨ ← Tactic.saveState, 0.0 ⟩ maxNodes
   let ppNodes ← nodes.mapM fun node => do
     let pp ← ppSearchState node.data
     return json%{
