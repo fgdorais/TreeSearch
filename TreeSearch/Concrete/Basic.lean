@@ -165,8 +165,13 @@ def selectChild (node : NodeType) : Option Nat :=
 def updateEdge (e : EdgeData) : EdgeData :=
   {
     e with
-      -- update value?
       visit := e.visit + 1
+  }
+
+def updateNode (node : NodeType) : NodeData :=
+  {
+    node.data with
+      value := node.data.value + 1
   }
 
 structure PPNodeData where
@@ -188,7 +193,7 @@ def reapMCTS (tg : TacGen) : TacticM Unit := do
     (expand tg)
     (fun x => return selectChild x)
     (fun _ e _ => return updateEdge e)
-    (fun x => return x.data)
+    (fun x => return updateNode x)
     ⟨ ← Tactic.saveState, 0.0 ⟩
 
   let ppNodes ← nodes.mapM fun node => do
