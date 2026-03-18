@@ -45,7 +45,7 @@ def isTerminal (ss : Tactic.SavedState) : TacticM Bool := do
   ss.restore
   return (← getUnsolvedGoals).isEmpty
 
-abbrev TacGen := MVarId → MetaM (Array (String × Float))
+abbrev TacGen := List MVarId → MetaM (Array (String × Float))
 
 namespace BFS
 
@@ -63,8 +63,7 @@ def expand (tg : TacGen) (ss : SearchState) : TacticM (Array (String × SearchSt
   let mut newStates := #[]
   let p := ss.priority
   ss.state.restore
-  let g ← getMainGoal
-  let tactics ← tg g
+  let tactics ← tg (← getUnsolvedGoals)
   for (t, Δp) in tactics do
     ss.state.restore
     if let some s' ← evalTacticStr t then
@@ -128,8 +127,7 @@ def expand (tg : TacGen) (node : NodeType) : TacticM (Array (EdgeData × NodeDat
   let s₀ := node.data.state
   let mut ret := #[]
   s₀.restore
-  let g ← getMainGoal
-  let tactics ← tg g
+  let tactics ← tg (← getUnsolvedGoals)
   for (t, p) in tactics do
     s₀.restore
     if let some s' ← evalTacticStr t then
