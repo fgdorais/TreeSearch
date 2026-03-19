@@ -46,6 +46,7 @@ def isTerminal (ss : Tactic.SavedState) : TacticM Bool := do
   return (← getUnsolvedGoals).isEmpty
 
 abbrev TacGen := List MVarId → MetaM (Array (String × Float))
+abbrev StateEval := List MVarId → MetaM Float
 
 namespace BFS
 
@@ -123,7 +124,7 @@ deriving ToJson
 
 abbrev NodeType := Node NodeData (EdgeData × NodeData)
 
-def expand (tg : TacGen) (node : NodeType) : TacticM (Array (EdgeData × NodeData)) := do
+def expand (tg : TacGen) (se : StateEval) (node : NodeType) : TacticM (Array (EdgeData × NodeData)) := do
   let s₀ := node.data.state
   let mut ret := #[]
   s₀.restore
@@ -131,8 +132,9 @@ def expand (tg : TacGen) (node : NodeType) : TacticM (Array (EdgeData × NodeDat
   for (t, p) in tactics do
     s₀.restore
     if let some s' ← evalTacticStr t then
+      s'.restore
       -- TODO: figure out initialization of nodes
-      ret := ret.push (⟨ t, p, 0 ⟩, ⟨ s', p ⟩)
+      ret := ret.push (⟨ t, p, 0 ⟩, ⟨ s', ← se (← getUnsolvedGoals) ⟩)
   return ret
 
 def c_base := 1.0
@@ -185,10 +187,10 @@ def ppNodeData (node : NodeData) : TacticM PPNodeData := do
 end MCTS
 
 open MCTS in
-def reapMCTS (tg : TacGen) : TacticM Unit := do
+def reapMCTS (tg : TacGen) (se : StateEval) : TacticM Unit := do
   let (k, nodes) ← monteCarloTreeSearch
     (fun x => isTerminal x.state)
-    (expand tg)
+    (expand tg se)
     (fun x => return selectChild x)
     (fun _ e _ => return updateEdge e)
     (fun x => return updateNode x)
