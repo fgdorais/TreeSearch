@@ -154,7 +154,7 @@ def computeScores (node : NodeType) : Array Float :=
 
 def selectChild (node : NodeType) : Option Nat :=
   let scores := computeScores node
-  -- I could not find a convenient way in Std to compute argmin of an array
+  -- I could not find a convenient way in Std to compute argmax of an array
   Id.run do
     let mut bestIdx := none
     let mut bestScore := 0.0
