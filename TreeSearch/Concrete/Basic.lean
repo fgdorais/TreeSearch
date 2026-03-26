@@ -8,10 +8,13 @@ public meta section
 
 namespace Reap.TreeSearch
 
-def evalTacticStr (str : String) : TacticM (Option Tactic.SavedState) := do
+def withHeartbeats {α : Type _} [Monad m] [MonadWithReaderOf Core.Context m] (heartbeats : Nat) : m α → m α :=
+  withReader (fun s => { s with maxHeartbeats := heartbeats })
+
+def evalTacticStr (str : String) (heartbeats : Nat) : TacticM (Option Tactic.SavedState) := do
   let .ok stx := Parser.runParserCategory (← getEnv) `tactic str | return none
   try
-    evalTactic stx
+    withHeartbeats heartbeats <| evalTactic stx
     pruneSolvedGoals
     if (← getThe Core.State).messages.hasErrors then
       return none
@@ -67,7 +70,7 @@ def expand (tg : TacGen) (ss : SearchState) : TacticM (Array (String × SearchSt
   let tactics ← tg (← getUnsolvedGoals)
   for (t, Δp) in tactics do
     ss.state.restore
-    if let some s' ← evalTacticStr t then
+    if let some s' ← evalTacticStr t 1000000 then
       -- TODO: merge nodes
       newStates := newStates.push (t, ⟨ s', p + Δp ⟩)
   return newStates
@@ -133,7 +136,7 @@ def expand (tg : TacGen) (se : StateEval) (node : NodeType) : TacticM (Array (Ed
   let tactics ← tg (← getUnsolvedGoals)
   for (t, p) in tactics do
     s₀.restore
-    if let some s' ← evalTacticStr t then
+    if let some s' ← evalTacticStr t 1000000 then
       s'.restore
       -- TODO: figure out initialization of nodes
       ret := ret.push (⟨ t, p, 0 ⟩, ⟨ s', ← se (← getUnsolvedGoals) ⟩)
