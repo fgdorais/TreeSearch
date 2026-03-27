@@ -8,6 +8,11 @@ public meta section
 
 namespace Reap.TreeSearch
 
+register_option reap.heartbeats : Nat := {
+  defValue := 1000000000
+  descr := "Maximum heartbeats per tactic"
+}
+
 def withHeartbeats {m : Type _ → Type _} {α : Type _} [Monad m] [MonadWithReaderOf Core.Context m] (heartbeats : Nat) : m α → m α :=
   withReader (fun s => { s with maxHeartbeats := heartbeats })
 
@@ -75,7 +80,7 @@ def expand (tg : TacGen) (ss : SearchState) : TacticM (Array (String × SearchSt
   let tactics ← tg (← getUnsolvedGoals)
   for (t, Δp) in tactics do
     ss.state.restore
-    if let some s' ← evalTacticStr t 1000000 then
+    if let some s' ← evalTacticStr t (reap.heartbeats.get (← getOptions)) then
       -- TODO: merge nodes
       newStates := newStates.push (t, ⟨ s', p + Δp ⟩)
   return newStates
@@ -141,7 +146,7 @@ def expand (tg : TacGen) (se : StateEval) (node : NodeType) : TacticM (Array (Ed
   let tactics ← tg (← getUnsolvedGoals)
   for (t, p) in tactics do
     s₀.restore
-    if let some s' ← evalTacticStr t 1000000 then
+    if let some s' ← evalTacticStr t (reap.heartbeats.get (← getOptions)) then
       s'.restore
       -- TODO: figure out initialization of nodes
       ret := ret.push (⟨ t, p, 0 ⟩, ⟨ s', ← se (← getUnsolvedGoals) ⟩)
