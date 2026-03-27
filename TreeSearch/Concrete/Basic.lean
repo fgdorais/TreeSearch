@@ -14,9 +14,14 @@ def withHeartbeats {m : Type _ → Type _} {α : Type _} [Monad m] [MonadWithRea
 def evalTacticStr (str : String) (heartbeats : Nat) : TacticM (Option Tactic.SavedState) := do
   let .ok stx := Parser.runParserCategory (← getEnv) `tactic str | return none
   try
-    withHeartbeats heartbeats <| evalTactic stx
-    pruneSolvedGoals
-    if (← getThe Core.State).messages.hasErrors then
+    let success ← tryCatchRuntimeEx (handler := fun _ => return false) do
+      withHeartbeats heartbeats <| evalTactic stx
+      return true
+    if success then
+      pruneSolvedGoals
+      if (← getThe Core.State).messages.hasErrors then
+        return none
+    else
       return none
   catch _ => return none
   return ← Tactic.saveState
