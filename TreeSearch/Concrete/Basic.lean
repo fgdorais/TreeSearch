@@ -64,6 +64,7 @@ abbrev StateEval := List MVarId → MetaM Float
 namespace BFS
 
 structure SearchState where
+  valid : Bool
   state : Tactic.SavedState
   priority : Float := 0.0
 
@@ -73,19 +74,23 @@ def priority (ss : SearchState) : TacticM Float := do
   else
     return ss.priority
 
-def expand (tg : TacGen) (ss : SearchState) : TacticM (Array (String × SearchState)) := do
-  let mut newStates := #[]
-  let p := ss.priority
-  ss.state.restore
-  let tactics ← tg (← getUnsolvedGoals)
-  for (t, Δp) in tactics do
+def expand (tg : TacGen) (ss : SearchState) : TacticM (Array (String × SearchState)) :=
+  if not ss.valid then
+    return #[]
+  else do
+    let p := ss.priority
     ss.state.restore
-    if let some s' ← evalTacticStr t (reap.heartbeats.get (← getOptions)) then
-      -- TODO: merge nodes
-      newStates := newStates.push (t, ⟨ s', p + Δp ⟩)
-  return newStates
+    let tactics ← tg (← getUnsolvedGoals)
+    tactics.mapM fun (t, Δp) => do
+      ss.state.restore
+      if let some s' ← evalTacticStr t (reap.heartbeats.get (← getOptions)) then
+        -- TODO: merge nodes
+        return (t, ⟨ true, s', p + Δp ⟩)
+      else
+        return (t, ⟨ false, ss.state, -Float.inf ⟩)
 
 structure PPSearchState where
+  valid : Bool
   pp : List String
   priority : Float
 deriving ToJson
@@ -93,7 +98,7 @@ deriving ToJson
 def ppSearchState (ss : SearchState) : TacticM PPSearchState := do
   ss.state.restore
   let pp ← (← getUnsolvedGoals).mapM fun g => return toString (← Meta.ppGoal g)
-  return ⟨ pp, ss.priority ⟩
+  return ⟨ ss.valid, pp, ss.priority ⟩
 end BFS
 
 open BFS in
@@ -105,7 +110,7 @@ In the future, we may want to move it to a more appropriate namespace.
 def _root_.proofSearchBFS (tg : TacGen)
     (maxNodes := BestFirst.defaultMaxNodes) : TacticM Unit := do
   let (k, nodes) ← bestFirstSearch priority (fun x => isTerminal x.state)
-    (expand tg) ⟨ ← Tactic.saveState, 0.0 ⟩ maxNodes
+    (expand tg) ⟨ true, ← Tactic.saveState, 0.0 ⟩ maxNodes
   let ppNodes ← nodes.mapM fun node => do
     let pp ← ppSearchState node.data
     return json%{
