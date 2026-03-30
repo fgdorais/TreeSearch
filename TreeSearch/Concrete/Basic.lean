@@ -74,7 +74,7 @@ def priority (ss : SearchState) : TacticM Float := do
   else
     return ss.priority
 
-def expand (tg : TacGen) (ss : SearchState) : TacticM (Array (String × SearchState)) :=
+def expand (tg : TacGen) (se : Option StateEval) (ss : SearchState) : TacticM (Array (String × SearchState)) :=
   if not ss.valid then
     return #[]
   else do
@@ -85,7 +85,9 @@ def expand (tg : TacGen) (ss : SearchState) : TacticM (Array (String × SearchSt
       ss.state.restore
       if let some s' ← evalTacticStr t (reap.heartbeats.get (← getOptions)) then
         -- TODO: merge nodes
-        return (t, ⟨ true, s', p + Δp ⟩)
+        s'.restore
+        let p' ← if let some se := se then se (← getUnsolvedGoals) else pure (p + Δp)
+        return (t, ⟨ true, s', p' ⟩)
       else
         return (t, ⟨ false, ss.state, -Float.inf ⟩)
 
@@ -107,10 +109,10 @@ TODO: For now, `proofSearchBFS` is exposed to the root namespace
 so that we don't need to make any changes in the reap repository.
 In the future, we may want to move it to a more appropriate namespace.
 -/
-def _root_.proofSearchBFS (tg : TacGen)
+def _root_.proofSearchBFS (tg : TacGen) (se : Option StateEval)
     (maxNodes := BestFirst.defaultMaxNodes) : TacticM Unit := do
   let (k, nodes) ← bestFirstSearch priority (fun x => isTerminal x.state)
-    (expand tg) ⟨ true, ← Tactic.saveState, 0.0 ⟩ maxNodes
+    (expand tg se) ⟨ true, ← Tactic.saveState, 0.0 ⟩ maxNodes
   let ppNodes ← nodes.mapM fun node => do
     let pp ← ppSearchState node.data
     return json%{
