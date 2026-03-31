@@ -86,7 +86,13 @@ def expand (tg : TacGen) (se : Option StateEval) (ss : SearchState) : TacticM (A
       if let some s' ← evalTacticStr t (reap.heartbeats.get (← getOptions)) then
         -- TODO: merge nodes
         s'.restore
-        let p' ← if let some se := se then se (← getUnsolvedGoals) else pure (p + Δp)
+        let g ← getUnsolvedGoals
+        let p' ← if g.isEmpty then
+          pure Float.inf
+        else if let some se := se then
+          se g
+        else
+          pure (p + Δp)
         return (t, ⟨ true, s', p' ⟩)
       else
         return (t, ⟨ false, ss.state, -Float.inf ⟩)
