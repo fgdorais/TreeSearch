@@ -1,6 +1,6 @@
 name = "TreeSearch"
 version = "0.1.0"
-defaultTargets = ["treesearch"]
+defaultTargets = ["TreeSearch"]
 
 [[lean_lib]]
 name = "TreeSearch"
@@ -9,7 +9,3 @@ name = "TreeSearch"
 name = "batteries"
 scope = "leanprover-community"
 rev = "main"
-
-[[lean_exe]]
-name = "treesearch"
-root = "Main"
