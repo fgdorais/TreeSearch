@@ -1,9 +1,9 @@
 module
 public meta import Batteries.Data.Array
-public meta import TreeSearch.Abstract.Basic
+public meta import TreeSearch.Basic
 public meta import Lean
 
-namespace Reap.TreeSearch
+namespace TreeSearch
 
 public meta section
 /- Helper functions for working with an array of objects in StateT -/
@@ -89,4 +89,4 @@ partial def monteCarloTreeSearch
     return none
 end
 
-end Reap.TreeSearch
+end TreeSearch

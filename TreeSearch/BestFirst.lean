@@ -1,9 +1,9 @@
 module
 public meta import Batteries
-public meta import TreeSearch.Abstract.Basic
+public meta import TreeSearch.Basic
 open Batteries
 
-namespace Reap.TreeSearch
+namespace TreeSearch
 
 public meta section
 variable {m : Type → Type} [Monad m] {σ ε : Type}
@@ -40,4 +40,4 @@ def bestFirstSearch (priority : σ → m Float)
 
 end
 
-end Reap.TreeSearch
+end TreeSearch
