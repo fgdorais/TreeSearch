@@ -34,8 +34,7 @@ def resolve (node : Node σ (ε × Nat)) : SearchT σ ε m (Node σ (ε × σ)) 
   let children ← node.children.mapM fun (e, i) => do pure (e, ← getsAtT i Node.data data)
   return { data, children }
 
-partial def mctsStep
-    [Inhabited σ]
+unsafe def mctsStep
     (isTerminal : σ → m Bool)
     (expand : Node σ (ε × σ) → m (Array (ε × σ)))
     (selectChild : Node σ (ε × σ) → m (Option Nat))
@@ -43,7 +42,7 @@ partial def mctsStep
     (updateNode : Node σ (ε × σ) → σ → m σ)
     (i : Nat) : SearchT σ ε m (Option Nat × σ) := do
   let nodes ← get
-  let some x := nodes[i]? | unreachable!
+  let x := nodes[i]'lcProof
   let s := x.data
   let node ← resolve x
   match ← selectChild node with
@@ -58,7 +57,7 @@ partial def mctsStep
       modify fun a => a.set! i { x with children := x.children ++ newChildren }
       return (result, node.data)
   | some k =>
-      let some (e, j) := x.children[k]? | unreachable!
+      let (e, j) := x.children[k]'lcProof
       let (result, data) ← mctsStep isTerminal expand selectChild updateEdge updateNode j
       let e' ← updateEdge s e (← getsAtT j Node.data s) data
       let x' := { x with children := x.children.set! k (e', j) }
@@ -70,8 +69,7 @@ partial def mctsStep
 def MCTS.defaultMaxNodes : Nat := 64
 def MCTS.defaultMaxSteps : Nat := 64
 
-partial def monteCarloTreeSearch
-    [Inhabited σ]
+unsafe def monteCarloTreeSearch
     (isTerminal : σ → m Bool)
     (expand : Node σ (ε × σ) → m (Array (ε × σ)))
     (selectChild : Node σ (ε × σ) → m (Option Nat))
