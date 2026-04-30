@@ -35,12 +35,13 @@ def resolve (node : Node σ (ε × Nat)) : SearchT σ ε m (Node σ (ε × σ)) 
   return { data, children }
 
 partial def mctsStep
+    [Inhabited σ]
     (isTerminal : σ → m Bool)
     (expand : Node σ (ε × σ) → m (Array (ε × σ)))
     (selectChild : Node σ (ε × σ) → m (Option Nat))
-    (updateEdge : σ → ε → σ → m ε)
-    (updateNode : Node σ (ε × σ) → m σ)
-    (i : Nat) : SearchT σ ε m (Option Nat) := do
+    (updateEdge : σ → ε → σ → σ → m ε)
+    (updateNode : Node σ (ε × σ) → σ → m σ)
+    (i : Nat) : SearchT σ ε m (Option Nat × σ) := do
   let nodes ← get
   let some x := nodes[i]? | unreachable!
   let s := x.data
@@ -55,26 +56,27 @@ partial def mctsStep
         if ← isTerminal s' then
           result := some i'
       modify fun a => a.set! i { x with children := x.children ++ newChildren }
-      return result
+      return (result, node.data)
   | some k =>
       let some (e, j) := x.children[k]? | unreachable!
-      let result ← mctsStep isTerminal expand selectChild updateEdge updateNode j
-      let e' ← updateEdge s e (← getsAtT j Node.data s)
+      let (result, data) ← mctsStep isTerminal expand selectChild updateEdge updateNode j
+      let e' ← updateEdge s e (← getsAtT j Node.data s) data
       let x' := { x with children := x.children.set! k (e', j) }
-      let s' ← updateNode (← resolve x')
+      let s' ← updateNode (← resolve x') data
       let x'' := { x' with data := s' }
       setAtT i x''
-      return result
+      return (result, data)
 
 def MCTS.defaultMaxNodes : Nat := 64
 def MCTS.defaultMaxSteps : Nat := 64
 
 partial def monteCarloTreeSearch
+    [Inhabited σ]
     (isTerminal : σ → m Bool)
     (expand : Node σ (ε × σ) → m (Array (ε × σ)))
     (selectChild : Node σ (ε × σ) → m (Option Nat))
-    (updateEdge : σ → ε → σ → m ε)
-    (updateNode : Node σ (ε × σ) → m σ)
+    (updateEdge : σ → ε → σ → σ → m ε)
+    (updateNode : Node σ (ε × σ) → σ → m σ)
     (start : σ)
     (maxNodes := MCTS.defaultMaxNodes)
     (maxSteps := MCTS.defaultMaxSteps) :
@@ -82,7 +84,7 @@ partial def monteCarloTreeSearch
   StateT.run (s := #[ { data := start } ]) do
     let mut step := 0
     while (← get).size <= maxNodes && step < maxSteps do
-      let result ← mctsStep isTerminal expand selectChild updateEdge updateNode 0
+      let (result, _) ← mctsStep isTerminal expand selectChild updateEdge updateNode 0
       if result.isSome then
         return result
       step := step + 1
