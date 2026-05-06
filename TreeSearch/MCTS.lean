@@ -35,12 +35,11 @@ def resolve (node : Node σ (ε × Nat)) : SearchT σ ε m (Node σ (ε × σ)) 
   return { data, children }
 
 unsafe def mctsStep
-    (isTerminal : σ → m Bool)
     (visitNode : Node σ (ε × σ) → m (σ × Array (ε × σ)))
     (selectChild : Node σ (ε × σ) → m (Option Nat))
     (updateEdge : σ → ε → σ → σ → m ε)
     (updateNode : Node σ (ε × σ) → σ → m σ)
-    (i : Nat) : SearchT σ ε m (Option Nat × σ) := do
+    (i : Nat) : SearchT σ ε m σ := do
   let nodes ← get
   let x := nodes[i]'lcProof
   let s := x.data
@@ -49,23 +48,20 @@ unsafe def mctsStep
   | none =>
       let (data', children') ← visitNode node
       let mut newChildren := #[]
-      let mut result := none
       for (e, s') in children' do
         let i' ← pushT { data := s' }
         newChildren := newChildren.push (e, i')
-        if ← isTerminal s' then
-          result := some i'
       modify fun a => a.set! i { data := data', children := x.children ++ newChildren }
-      return (result, node.data)
+      return node.data
   | some k =>
       let (e, j) := x.children[k]'lcProof
-      let (result, data) ← mctsStep isTerminal visitNode selectChild updateEdge updateNode j
+      let data ← mctsStep visitNode selectChild updateEdge updateNode j
       let e' ← updateEdge s e (← getsAtT j Node.data s) data
       let x' := { x with children := x.children.set! k (e', j) }
       let s' ← updateNode (← resolve x') data
       let x'' := { x' with data := s' }
       setAtT i x''
-      return (result, data)
+      return data
 
 def MCTS.defaultMaxNodes : Nat := 64
 def MCTS.defaultMaxSteps : Nat := 64
@@ -83,7 +79,8 @@ unsafe def monteCarloTreeSearch
   StateT.run (s := #[ { data := start } ]) do
     let mut step := 0
     while (← get).size <= maxNodes && step < maxSteps do
-      let (result, _) ← mctsStep isTerminal visitNode selectChild updateEdge updateNode 0
+      discard <| mctsStep visitNode selectChild updateEdge updateNode 0
+      let result ← (← get).findIdxM? fun x => isTerminal x.data
       if result.isSome then
         return result
       step := step + 1
