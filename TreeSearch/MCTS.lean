@@ -36,7 +36,7 @@ def resolve (node : Node σ (ε × Nat)) : SearchT σ ε m (Node σ (ε × σ)) 
 
 unsafe def mctsStep
     (isTerminal : σ → m Bool)
-    (expand : Node σ (ε × σ) → m (Array (ε × σ)))
+    (visitNode : Node σ (ε × σ) → m (σ × Array (ε × σ)))
     (selectChild : Node σ (ε × σ) → m (Option Nat))
     (updateEdge : σ → ε → σ → σ → m ε)
     (updateNode : Node σ (ε × σ) → σ → m σ)
@@ -47,18 +47,19 @@ unsafe def mctsStep
   let node ← resolve x
   match ← selectChild node with
   | none =>
+      let (data', children') ← visitNode node
       let mut newChildren := #[]
       let mut result := none
-      for (e, s') in ← expand node do
+      for (e, s') in children' do
         let i' ← pushT { data := s' }
         newChildren := newChildren.push (e, i')
         if ← isTerminal s' then
           result := some i'
-      modify fun a => a.set! i { x with children := x.children ++ newChildren }
+      modify fun a => a.set! i { data := data', children := x.children ++ newChildren }
       return (result, node.data)
   | some k =>
       let (e, j) := x.children[k]'lcProof
-      let (result, data) ← mctsStep isTerminal expand selectChild updateEdge updateNode j
+      let (result, data) ← mctsStep isTerminal visitNode selectChild updateEdge updateNode j
       let e' ← updateEdge s e (← getsAtT j Node.data s) data
       let x' := { x with children := x.children.set! k (e', j) }
       let s' ← updateNode (← resolve x') data
@@ -71,7 +72,7 @@ def MCTS.defaultMaxSteps : Nat := 64
 
 unsafe def monteCarloTreeSearch
     (isTerminal : σ → m Bool)
-    (expand : Node σ (ε × σ) → m (Array (ε × σ)))
+    (visitNode : Node σ (ε × σ) → m (σ × Array (ε × σ)))
     (selectChild : Node σ (ε × σ) → m (Option Nat))
     (updateEdge : σ → ε → σ → σ → m ε)
     (updateNode : Node σ (ε × σ) → σ → m σ)
@@ -82,7 +83,7 @@ unsafe def monteCarloTreeSearch
   StateT.run (s := #[ { data := start } ]) do
     let mut step := 0
     while (← get).size <= maxNodes && step < maxSteps do
-      let (result, _) ← mctsStep isTerminal expand selectChild updateEdge updateNode 0
+      let (result, _) ← mctsStep isTerminal visitNode selectChild updateEdge updateNode 0
       if result.isSome then
         return result
       step := step + 1
