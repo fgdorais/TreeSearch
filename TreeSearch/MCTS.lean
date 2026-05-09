@@ -24,22 +24,24 @@ def setAtT (i : Nat) (x : σ) : StateT (Array σ) m Unit :=
 end
 
 public meta section
-abbrev SearchT σ ε m := StateT (Array (Node σ (ε × Nat))) m
+abbrev IndexedTreeT σ ε m := StateT (Array (Node σ (ε × Nat))) m
 
 variable {σ ε : Type}
 variable {m : Type → Type} [Monad m]
 
-def resolve (node : Node σ (ε × Nat)) : SearchT σ ε m (Node σ (ε × σ)) := do
+local notation "SearchM" => IndexedTreeT σ ε m
+
+def resolve (node : Node σ (ε × Nat)) : SearchM (Node σ (ε × σ)) := do
   let data := node.data
   let children ← node.children.mapM fun (e, i) => do pure (e, ← getsAtT i Node.data data)
   return { data, children }
 
 unsafe def mctsStep
-    (visitNode : Node σ (ε × σ) → m (σ × Array (ε × σ)))
-    (selectChild : Node σ (ε × σ) → m (Option Nat))
-    (updateEdge : σ → ε → σ → σ → m ε)
-    (updateNode : Node σ (ε × σ) → σ → m σ)
-    (i : Nat) : SearchT σ ε m σ := do
+    (visitNode : Node σ (ε × σ) → SearchM (σ × Array (ε × σ)))
+    (selectChild : Node σ (ε × σ) → SearchM (Option Nat))
+    (updateEdge : σ → ε → σ → σ → SearchM ε)
+    (updateNode : Node σ (ε × σ) → σ → SearchM σ)
+    (i : Nat) : SearchM σ := do
   let nodes ← get
   let x := nodes[i]'lcProof
   let s := x.data
@@ -67,11 +69,11 @@ def MCTS.defaultMaxNodes : Nat := 64
 def MCTS.defaultMaxSteps : Nat := 64
 
 unsafe def monteCarloTreeSearch
-    (isTerminal : σ → m Bool)
-    (visitNode : Node σ (ε × σ) → m (σ × Array (ε × σ)))
-    (selectChild : Node σ (ε × σ) → m (Option Nat))
-    (updateEdge : σ → ε → σ → σ → m ε)
-    (updateNode : Node σ (ε × σ) → σ → m σ)
+    (isTerminal : σ → SearchM Bool)
+    (visitNode : Node σ (ε × σ) → SearchM (σ × Array (ε × σ)))
+    (selectChild : Node σ (ε × σ) → SearchM (Option Nat))
+    (updateEdge : σ → ε → σ → σ → SearchM ε)
+    (updateNode : Node σ (ε × σ) → σ → SearchM σ)
     (start : σ)
     (maxNodes := MCTS.defaultMaxNodes)
     (maxSteps := MCTS.defaultMaxSteps) :
