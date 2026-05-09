@@ -36,33 +36,43 @@ def resolve (node : Node σ (ε × Nat)) : SearchM (Node σ (ε × σ)) := do
   let children ← node.children.mapM fun (e, i) => do pure (e, ← getsAtT i Node.data data)
   return { data, children }
 
+def pushChildT (parentIdx : Nat) (edge : ε) (childData : σ) : SearchM Nat := do
+  let childIdx ← pushT { data := childData }
+  let nodes ← get
+  if let some parent := nodes[parentIdx]? then
+    setAtT parentIdx { parent with children := parent.children.push (edge, childIdx) }
+  return childIdx
+
+def pushChildrenT (parentIdx : Nat) (children : Array (ε × σ)) : SearchM (Array Nat) := do
+  let mut childIndices := #[]
+  for (edge, childData) in children do
+    childIndices := childIndices.push (← pushChildT parentIdx edge childData)
+  return childIndices
+
 unsafe def mctsStep
-    (visitNode : Node σ (ε × σ) → SearchM (σ × Array (ε × σ)))
+    (visitNode : Nat → Node σ (ε × σ) → SearchM σ)
     (selectChild : Node σ (ε × σ) → SearchM (Option Nat))
     (updateEdge : σ → ε → σ → σ → SearchM ε)
     (updateNode : Node σ (ε × σ) → σ → SearchM σ)
     (i : Nat) : SearchM σ := do
   let nodes ← get
   let x := nodes[i]'lcProof
-  let s := x.data
   let node ← resolve x
   match ← selectChild node with
   | none =>
-      let (data', children') ← visitNode node
-      let mut newChildren := #[]
-      for (e, s') in children' do
-        let i' ← pushT { data := s' }
-        newChildren := newChildren.push (e, i')
-      modify fun a => a.set! i { data := data', children := x.children ++ newChildren }
-      return node.data
+      visitNode i node
   | some k =>
-      let (e, j) := x.children[k]'lcProof
+      let (_, j) := x.children[k]'lcProof
       let data ← mctsStep visitNode selectChild updateEdge updateNode j
-      let e' ← updateEdge s e (← getsAtT j Node.data s) data
-      let x' := { x with children := x.children.set! k (e', j) }
-      let s' ← updateNode (← resolve x') data
-      let x'' := { x' with data := s' }
-      setAtT i x''
+      let x ← getAtT i x
+      let (e, _) := x.children[k]'lcProof
+      let e' ← updateEdge x.data e (← getsAtT j Node.data x.data) data
+      let x ← getAtT i x
+      let x := { x with children := x.children.set! k (e', j) }
+      setAtT i x
+      let s' ← updateNode (← resolve x) data
+      let x ← getAtT i x
+      setAtT i { x with data := s' }
       return data
 
 def MCTS.defaultMaxNodes : Nat := 64
@@ -70,7 +80,7 @@ def MCTS.defaultMaxSteps : Nat := 64
 
 unsafe def monteCarloTreeSearch
     (isTerminal : σ → SearchM Bool)
-    (visitNode : Node σ (ε × σ) → SearchM (σ × Array (ε × σ)))
+    (visitNode : Nat → Node σ (ε × σ) → SearchM σ)
     (selectChild : Node σ (ε × σ) → SearchM (Option Nat))
     (updateEdge : σ → ε → σ → σ → SearchM ε)
     (updateNode : Node σ (ε × σ) → σ → SearchM σ)
