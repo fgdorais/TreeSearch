@@ -54,7 +54,7 @@ def pushChildrenT (parentIdx : Nat) (children : Array (ε × σ)) : SearchM (Arr
   return childIndices
 
 unsafe def mctsStep
-    (visitNode : Nat → Node σ (ε × σ) → SearchM σ)
+    (visitNode : Nat → Node σ (ε × σ) → SearchM Unit)
     (selectChild : Node σ (ε × σ) → SearchM (Option Nat))
     (updateEdge : σ → ε → σ → σ → SearchM ε)
     (updateNode : Node σ (ε × σ) → σ → SearchM σ)
@@ -65,6 +65,7 @@ unsafe def mctsStep
   match ← selectChild node with
   | none =>
       visitNode i node
+      return nodes[i]'lcProof |>.data
   | some k =>
       let (_, j) := x.children[k]'lcProof
       let data ← mctsStep visitNode selectChild updateEdge updateNode j
@@ -84,7 +85,7 @@ def MCTS.defaultMaxSteps : Nat := 64
 
 unsafe def monteCarloTreeSearch
     (isTerminal : σ → SearchM Bool)
-    (visitNode : Nat → Node σ (ε × σ) → SearchM σ)
+    (visitNode : Nat → Node σ (ε × σ) → SearchM Unit)
     (selectChild : Node σ (ε × σ) → SearchM (Option Nat))
     (updateEdge : σ → ε → σ → σ → SearchM ε)
     (updateNode : Node σ (ε × σ) → σ → SearchM σ)
