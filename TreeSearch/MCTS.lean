@@ -21,6 +21,10 @@ def getsAtT {τ : Type} (i : Nat) (f : σ → τ) (d : τ) : StateT (Array σ) m
 
 def setAtT (i : Nat) (x : σ) : StateT (Array σ) m Unit :=
   modify fun a => a.set! i x
+
+def modifyAtT (i : Nat) (f : σ → σ) : StateT (Array σ) m Unit :=
+  modify fun a => a.modify i f
+
 end
 
 public meta section
